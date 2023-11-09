@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Jeu de Réflexe</title>
+<style>
+  canvas {
+    background-color: #000;
+    display: block;
+    margin: 0 auto;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const CIRCLE_RADIUS = 15;
+const MIN_TIME_BETWEEN_CIRCLES = 500; // en millisecondes
+const MAX_TIME_BETWEEN_CIRCLES = 1500; // en millisecondes
+const GAME_DURATION = 60000; // Durée du jeu en millisecondes
+const CIRCLE_COLORS = ['#ff0000']; // Couleurs des cercles
+
+let clickTimes = [];
+let successfulClicks = 0;
+let totalClicks = 0;
+let totalCircles = 0;
+let circleSpawnTime = null;
+let circlePosition = null;
+let gameEndTime;
+let gameStarted = false;
+
+function showRandomCircle() {
+  const color = CIRCLE_COLORS[Math.floor(Math.random() * CIRCLE_COLORS.length)];
+  const x = Math.random() * (canvas.width - CIRCLE_RADIUS * 2) + CIRCLE_RADIUS;
+  const y = Math.random() * (canvas.height - CIRCLE_RADIUS * 2) + CIRCLE_RADIUS;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, CIRCLE_RADIUS, 0, Math.PI * 2);
+  ctx.fill();
+  
+  circlePosition = { x, y };
+  circleSpawnTime = Date.now();
+  totalCircles++;
+}
+
+function getMousePos(evt) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: evt.clientX - rect.left,
+    y: evt.clientY - rect.top
+  };
+}
+
+function handleClick(evt) {
+  if (!gameStarted) return;
+
+  const mousePos = getMousePos(evt);
+  if (circlePosition) {
+    const dx = mousePos.x - circlePosition.x;
+    const dy = mousePos.y - circlePosition.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= CIRCLE_RADIUS) {
+      clickTimes.push(Date.now() - circleSpawnTime);
+      successfulClicks++;
+      circlePosition = null; // Réinitialiser la position pour éviter les clics multiples
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  totalClicks++;
+}
+
+function endGame() {
+  gameStarted = false;
+  const averageTime = clickTimes.reduce((a, b) => a + b, 0) / clickTimes.length || 0;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = "center";
+  ctx.textBaseline = 'middle'; // Aligner le texte verticalement au milieu
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText(`Temps de réaction moyen : ${(averageTime / 1000).toFixed(3)} secondes`, canvas.width / 2, canvas.height / 2 - 20);
+  ctx.fillText(`Clics réussis : ${successfulClicks} / ${totalClicks}`, canvas.width / 2, canvas.height / 2 + 20);
+}
+
+
+function gameLoop() {
+  if (!gameStarted) return;
+
+  if (Date.now() >= gameEndTime) {
+    endGame();
+    return;
+  }
+  
+  if (!circlePosition && Date.now() - circleSpawnTime > Math.random() * (MAX_TIME_BETWEEN_CIRCLES - MIN_TIME_BETWEEN_CIRCLES) + MIN_TIME_BETWEEN_CIRCLES) {
+    showRandomCircle();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+  gameStarted = true;
+  gameEndTime = Date.now() + GAME_DURATION;
+  circleSpawnTime = Date.now();
+  gameLoop();
+}
+
+function countdown(seconds) {
+  if (seconds > 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(`Préparez-vous... ${seconds}`, canvas.width / 2, canvas.height / 2);
+    setTimeout(() => countdown(seconds - 1), 1000);
+  } else {
+    startGame();
+  }
+}
+
+canvas.addEventListener('mousedown', handleClick);
+
+ctx.font = '36px Arial';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.fillStyle = '#FFFFFF';
+
+// Commencer le compte à rebours avant de démarrer le jeu
+countdown(3);
+
+</script>
+
+</body>
+</html>
